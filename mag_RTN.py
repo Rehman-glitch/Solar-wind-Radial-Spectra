@@ -1,14 +1,22 @@
 from solarwind import load_timeseries
 import matplotlib.pyplot as mat
 import numpy as np
+import sys, os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import functions as F
 
 data = load_timeseries(
     mission="psp",
-    start="2021-11-20T03:53:25",
-    stop="2021-11-20T12:55:34",
+    start="2021-11-17T00:00:00",
+    stop="2021-11-20T12:00:00"
 )
 
+
+# start="2021-11-17T00:00:00", Davis
+# stop="2021-11-20T12:00:00"
+
+# start="2021-11-20T03:53:25", Huang
+# stop="2021-11-20T12:55:34"
 
 # start="2022-02-25T00:00:00",
 # stop="2022-02-26T00:00:00"
@@ -16,13 +24,15 @@ data = load_timeseries(
 t = data.mag['time'].values
 B = data.mag['B_mag'].values
 t = (t - t[0]) / np.timedelta64(1, 's')
+dt = (t[-1]-t[0])/len(t)
 
 
 l = ["B_R", "B_T", "B_N"]
 
 f, w = F.fast_fourier(l, "time")
 B_sqrd = np.abs(f[0])**2 + np.abs(f[1])**2 + np.abs(f[2])**2
-l.append("B_sqrd")
+B_mag = B_sqrd
+l.append("B_mag")
 f = list(f)
 f.append(B_sqrd)
 f = np.array(f)
@@ -40,10 +50,10 @@ N = len(t)
 
 for i in range(len(l)):
     axis = l[i]
-    if axis == "B_sqrd":
-        power = abs(f[i]) / N
+    if axis == "B_mag":
+        power = abs(f[i])
     else:
-        power = np.abs(f[i])**2 / N 
+        power = np.abs(f[i])**2
     power = F.smoothen(power, 10, step)
     logpower = np.log10(power)
     logomegas = np.log10(omegas)
@@ -56,12 +66,14 @@ for i in range(len(l)):
     axs[i, 0].set_xlabel('log(f)')
     axs[i, 0].set_ylabel(f'log(power) [{axis}]')
     axs[i, 0].set_title(f'{axis} power spectrum')
-
-    # Right column: spectral index (regression slope) vs log(ω)
+    axs[i, 0].set_xlim(-4,0)
+    
+    # Right column: (regression slope) vs log(ω)
     axs[i, 1].plot(modx, gradients)
     axs[i, 1].set_xlabel('log(f)')
     axs[i, 1].set_ylabel('spectral index (slope)')
     axs[i, 1].set_title(f'{axis} slope')
+    axs[i, 1].set_xlim(-4,0)
 
 fig.tight_layout()
 mat.show()
