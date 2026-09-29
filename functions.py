@@ -133,7 +133,7 @@ def fast_fourier(l, time):
     transformed_array = []
     for axis in l:
         B = data.mag[axis].values
-        f = np.fft.rfft(B)
+        f = np.fft.rfft(B, norm="forward")
         transformed_array.append(f)
         print(axis)
         
