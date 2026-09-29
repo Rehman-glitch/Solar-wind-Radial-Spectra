@@ -16,6 +16,7 @@ data = load_timeseries(
 t = data.mag['time'].values
 B = data.mag['B_mag'].values
 t = (t - t[0]) / np.timedelta64(1, 's')
+dt = (t[-1]-t[0])/len(t)
 
 
 l = ["B_R", "B_T", "B_N"]
@@ -41,9 +42,9 @@ N = len(t)
 for i in range(len(l)):
     axis = l[i]
     if axis == "B_trace":
-        power = abs(f[i])
+        power = dt*abs(f[i])
     else:
-        power = np.abs(f[i])**2
+        power = dt*np.abs(f[i])**2
     power = F.smoothen(power, 10, step)
     logpower = np.log10(power)
     logomegas = np.log10(omegas)
