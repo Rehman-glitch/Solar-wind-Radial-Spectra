@@ -30,11 +30,10 @@ dt = (t[-1]-t[0])/len(t)
 l = ["B_R", "B_T", "B_N"]
 
 f, w = F.fast_fourier(l, "time")
-B_sqrd = np.abs(f[0])**2 + np.abs(f[1])**2 + np.abs(f[2])**2
-B_mag = B_sqrd
-l.append("B_mag")
+B_trace = np.abs(f[0]) + np.abs(f[1]) + np.abs(f[2])
+l.append("B_trace")
 f = list(f)
-f.append(B_sqrd)
+f.append(B_trace)
 f = np.array(f)
 
 
@@ -50,10 +49,7 @@ N = len(t)
 
 for i in range(len(l)):
     axis = l[i]
-    if axis == "B_mag":
-        power = abs(f[i])
-    else:
-        power = np.abs(f[i])**2
+    power = np.abs(f[i])**2
     power = F.smoothen(power, 10, step)
     logpower = np.log10(power)
     logomegas = np.log10(omegas)
