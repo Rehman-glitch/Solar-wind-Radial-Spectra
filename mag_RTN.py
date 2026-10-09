@@ -1,6 +1,8 @@
 from solarwind import load_timeseries
 import matplotlib.pyplot as mat
 import numpy as np
+import sys
+sys.path.append(r"C:\Users\ual-laptop\Desktop\Plasma Research\Codes")
 import functions as F
 
 data = load_timeseries(
@@ -10,21 +12,24 @@ data = load_timeseries(
 )
 
 
+
+
 # start="2022-02-25T00:00:00",
 # stop="2022-02-26T00:00:00"
 
 t = data.mag['time'].values
 B = data.mag['B_mag'].values
 t = (t - t[0]) / np.timedelta64(1, 's')
+dt = (t[-1]-t[0])/len(t)
 
 
 l = ["B_R", "B_T", "B_N"]
 
 f, w = F.fast_fourier(l, "time")
-B_sqrd = np.abs(f[0])**2 + np.abs(f[1])**2 + np.abs(f[2])**2
-l.append("B_sqrd")
+B_trace = np.abs(f[0])**2 + np.abs(f[1])**2 + np.abs(f[2])**2
+l.append("B_trace")
 f = list(f)
-f.append(B_sqrd)
+f.append(B_trace)
 f = np.array(f)
 
 
@@ -40,10 +45,10 @@ N = len(t)
 
 for i in range(len(l)):
     axis = l[i]
-    if axis == "B_sqrd":
-        power = abs(f[i]) / N
+    if axis == "B_trace":
+        power = dt*abs(f[i])
     else:
-        power = np.abs(f[i])**2 / N 
+        power = dt*np.abs(f[i])**2
     power = F.smoothen(power, 10, step)
     logpower = np.log10(power)
     logomegas = np.log10(omegas)
@@ -52,7 +57,11 @@ for i in range(len(l)):
     # modx = smoothen(modx, 2, 2)
     # gradients = smoothen(gradients, 2, 2)
     
+    Davisy = [7, 6, 2]
+    Davisx = [-4, -2, 0]
+    
     axs[i, 0].plot(logomegas, logpower)
+    axs[i, 0].plot(Davisx, Davisy)
     axs[i, 0].set_xlabel('log(f)')
     axs[i, 0].set_ylabel(f'log(power) [{axis}]')
     axs[i, 0].set_title(f'{axis} power spectrum')
@@ -83,4 +92,3 @@ n_p = data.protons["n_p"]    # proton density
 t_p = data.protons["T_p"]    # proton temperature
 r_au = data.protons["r_au"]  # distance from Sun, in AU
 '''
-
