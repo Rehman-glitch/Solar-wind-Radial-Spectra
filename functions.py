@@ -3,7 +3,7 @@ import numpy as np
 
 data = load_timeseries(
     mission="psp",
-    start="2021-11-20T03:53:25",
+    start="2021-11-17T03:53:25",
     stop="2021-11-20T12:55:34",
 )
 
@@ -33,7 +33,7 @@ def fourier_transform(l, time):
         F = []
         # A single axis fourier tranformed
         for w in omegas:
-            integrand = B * np.exp(-1j*w*t)
+            integrand = (B-np.mean(B)) * np.exp(-1j*w*t)
             F.append(np.trapezoid(integrand, t))
             print(str(w) + axis) 
         
@@ -126,14 +126,14 @@ def fast_fourier(l, time):
     dt = (t[-1]-t[0])/len(t)
     w =np.fft.rfftfreq(len(t), dt)
     
-    print(dt)
+    print("dt = {}".format(dt))
     fw = 1/(t[-1]-t[0])
-    print(fw)
+    print("lowest frequency = {}".format(fw))
     
     transformed_array = []
     for axis in l:
         B = data.mag[axis].values
-        f = np.fft.rfft(B, norm="ortho")
+        f = np.fft.rfft(B-np.mean(B), norm="ortho")
         transformed_array.append(f)
         print(axis)
         
