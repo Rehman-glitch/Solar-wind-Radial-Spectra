@@ -4,9 +4,9 @@ import numpy as np
 import functions as F
 
 data = load_timeseries(
-    mission="psp",
-    start="2021-11-20T03:53:25",
-    stop="2021-11-20T12:55:34",
+    mission="SolO",
+    start="2021-11-17T07:00:00",
+    stop="2021-11-20T06:00:00",
 )
 
 
@@ -30,7 +30,7 @@ f = np.array(f)
 
 
 n = len(w)   # length of your w array
-print(n)
+print("Length of w array {}".format(n))
 step = n // 50000     # pick step so output ≈ 50000 points
 
 omegas = F.smoothen(w, 10, step)
@@ -53,7 +53,11 @@ for i in range(len(l)):
     # modx = smoothen(modx, 2, 2)
     # gradients = smoothen(gradients, 2, 2)
     
+    Davisy = [7, 6, 2]
+    Davisx = [-4, -2, 0]
+    
     axs[i, 0].plot(logomegas, logpower)
+    axs[i, 0].plot(Davisx, Davisy)
     axs[i, 0].set_xlabel('log(f)')
     axs[i, 0].set_ylabel(f'log(power) [{axis}]')
     axs[i, 0].set_title(f'{axis} power spectrum')
