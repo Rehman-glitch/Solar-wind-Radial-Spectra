@@ -1,10 +1,11 @@
 from solarwind import load_timeseries
 import numpy as np
+import pandas as pd
 
 data = load_timeseries(
     mission="psp",
-    start="2021-11-17T03:53:25",
-    stop="2021-11-20T12:55:34",
+    start="2021-11-17T07:00:00",
+    stop="2021-11-20T06:00:00",
 )
 
 def fourier_transform(l, time):
@@ -107,7 +108,7 @@ where:
     for i in range(0, len(x)-r+1, step):
         lx = x[i:i+r]
         ly = y[i:i+r]
-        avgx = np.sum(x[i:i+step])/step
+        avgx = np.mean(lx)
         # average of x over the interval
         Sxx = np.sum(lx**2) - (np.sum(lx)**2)/len(lx)
         Sxy = np.sum(lx*ly) - (np.sum(lx)*np.sum(ly))/len(lx)
@@ -126,17 +127,36 @@ def fast_fourier(l, time):
     dt = (t[-1]-t[0])/len(t)
     w =np.fft.rfftfreq(len(t), dt)
     
+    n = int(43200 / dt)                     # points in one chunk
+
+    T = []
+    for k in range(len(t) // n):            # whole chunks only
+        T.append(t[k*n:(k+1)*n])
+    
+    W = []
+    
+    for time in T:
+        time = time - time[0]
+        w = np.fft.rfftfreq(len(time), dt)
+        W.append(w)
+    
     print("dt = {}".format(dt))
     fw = 1/(t[-1]-t[0])
     print("lowest frequency = {}".format(fw))
     
     transformed_array = []
     for axis in l:
-        B = data.mag[axis].values
-        f = np.fft.rfft(B-np.mean(B), norm="ortho")
+        B = []
+        b = pd.Series(data.mag[axis].values).astype(float).interpolate(limit_direction="both").values
+        for k in range(len(b)//n):
+            B.append(b[k*n:(k+1)*n])
+        f = []
+        for i in B:  # i here are the chunks
+            chunk = np.fft.rfft(i-np.mean(i), norm="ortho") # transformation of each chunk
+            f.append(chunk)
         transformed_array.append(f)
         print(axis)
         
     transformed_array = np.array(transformed_array)
     
-    return (transformed_array, w)
+    return (transformed_array, W[0])
