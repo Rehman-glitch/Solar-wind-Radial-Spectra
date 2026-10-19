@@ -1,27 +1,30 @@
+import sys
+sys.path.append(r"C:\Users\ual-laptop\Desktop\Plasma Research\Codes") 
 from solarwind import load_timeseries
 import matplotlib.pyplot as mat
 import numpy as np
-import sys
-sys.path.append(r"C:\Users\ual-laptop\Desktop\Plasma Research\Codes")
 import functions as F
 
 data = load_timeseries(
     mission="psp",
-    start="2021-11-20T03:53:25",
-    stop="2021-11-20T12:55:34",
+    start="2021-11-17T07:00:00",
+    stop="2021-11-20T06:00:00",
 )
-
-
 
 
 # start="2022-02-25T00:00:00",
 # stop="2022-02-26T00:00:00"
+
+
 
 t = data.mag['time'].values
 B = data.mag['B_mag'].values
 t = (t - t[0]) / np.timedelta64(1, 's')
 dt = (t[-1]-t[0])/len(t)
 
+
+for a in ["B_R", "B_T", "B_N"]:
+    print(a, int(data.mag[a].isnull().sum()))
 
 l = ["B_R", "B_T", "B_N"]
 
@@ -34,7 +37,7 @@ f = np.array(f)
 
 
 n = len(w)   # length of your w array
-print(n)
+print("Length of w array {}".format(n))
 step = n // 50000     # pick step so output ≈ 50000 points
 
 omegas = F.smoothen(w, 10, step)
