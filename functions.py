@@ -1,10 +1,11 @@
 from solarwind import load_timeseries
 import numpy as np
+import pandas as pd
 
 data = load_timeseries(
     mission="psp",
-    start="2021-11-20T03:53:25",
-    stop="2021-11-20T12:55:34",
+    start="2021-11-17T07:00:00",
+    stop="2021-11-20T06:00:00",
 )
 
 def fourier_transform(l, time):
@@ -33,7 +34,7 @@ def fourier_transform(l, time):
         F = []
         # A single axis fourier tranformed
         for w in omegas:
-            integrand = B * np.exp(-1j*w*t)
+            integrand = (B-np.mean(B)) * np.exp(-1j*w*t)
             F.append(np.trapezoid(integrand, t))
             print(str(w) + axis) 
         
@@ -107,7 +108,7 @@ where:
     for i in range(0, len(x)-r+1, step):
         lx = x[i:i+r]
         ly = y[i:i+r]
-        avgx = np.sum(x[i:i+step])/step
+        avgx = np.mean(lx)
         # average of x over the interval
         Sxx = np.sum(lx**2) - (np.sum(lx)**2)/len(lx)
         Sxy = np.sum(lx*ly) - (np.sum(lx)*np.sum(ly))/len(lx)
@@ -126,14 +127,14 @@ def fast_fourier(l, time):
     dt = (t[-1]-t[0])/len(t)
     w =np.fft.rfftfreq(len(t), dt)
     
-    print(dt)
+    print("dt = {}".format(dt))
     fw = 1/(t[-1]-t[0])
-    print(fw)
+    print("lowest frequency = {}".format(fw))
     
     transformed_array = []
     for axis in l:
-        B = data.mag[axis].values
-        f = np.fft.rfft(B)
+        B = pd.Series(data.mag[axis].values).astype(float).interpolate(limit_direction="both").values
+        f = np.fft.rfft(B-np.mean(B), norm="ortho")
         transformed_array.append(f)
         print(axis)
         
