@@ -81,8 +81,8 @@ dict = {
 
 fig, axs = mat.subplots(len(B), 1, figsize=(8, 10))
 
-for key, value in dict:
-    i = 0
+i=0
+for key, value in dict.items():
     coord = value
     power = dt*(coord)**2
     power = smoothen(power,0.1)
