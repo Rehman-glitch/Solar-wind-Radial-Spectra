@@ -72,15 +72,26 @@ for coord in B:
 b_trace = np.sqrt(b_trace)
 B.append(b_trace)
 
+dict = {
+        "B_R":B[0],
+        "B_T":B[1],
+        "B_N":B[2],
+        "B_trace":B[3]
+        }
+
 fig, axs = mat.subplots(len(B), 1, figsize=(8, 10))
 
-for i in range(len(B)):
-    coord = B[i]
+for key, value in dict:
+    i = 0
+    coord = value
     power = dt*(coord)**2
     power = smoothen(power,0.1)
     logp = np.log10(power)
     
     axs[i].plot(logw, logp)
+    axs[i].set_xlabel(key)
+    
+    i += 1
     
 fig.tight_layout()
 mat.show()
