@@ -1,142 +1,105 @@
-from solarwind import load_timeseries
 import numpy as np
 
-data = load_timeseries(
-    mission="psp",
-    start="2021-11-20T03:53:25",
-    stop="2021-11-20T12:55:34",
-)
+def fast_fourier(y, x):
+    
+    dx = (x[-1]-x[0])/(len(x)-1)
+    n = int(43200 / dx)                     # points in one 12 hr chunk
+    w = np.fft.rfftfreq(n, dx)              # frequencies of one chunk, same for every chunk
+    w = w[1:]
+    
+    B = []
+    for coord in y:
+        chunks = []                         # the chunks of this one component
+        for i in range(len(coord)//n):      # whole chunks only
+            c = coord[i*n:(i+1)*n]          # the i-th 12 hr chunk
+            b = np.fft.rfft(c-np.mean(c), norm="ortho")
+            chunks.append(np.abs(b[1:]))
+        B.append(chunks)
+    
+    return (B, w)
 
-def fourier_transform(l, time):
-    '''
-    l is the list of data you want tranformed
-    t is the time interval
-    
-    Returns a tuple of the transformed lists and the omegas.
-    '''
-    
-    t = data.mag[time].values
-    t = (t - t[0]) / np.timedelta64(1, 's')  # seconds since start
-    
-    T = t[-1] - t[0]
-    omega_min = 2*np.pi / T
-    dt = T / len(t)
-    omega_max = 1 / 2*dt
-    # Just setting up the limits of omega.
-    
-    omegas = np.logspace(np.log10(omega_min), np.log10(omega_max), 200)
-    
-    dl = []
-    for axis in l:
-        B = data.mag[axis].values
-        
-        F = []
-        # A single axis fourier tranformed
-        for w in omegas:
-            integrand = B * np.exp(-1j*w*t)
-            F.append(np.trapezoid(integrand, t))
-            print(str(w) + axis) 
-        
-        F = np.array(F)
-        dl.append(F)
+def smoothen(x, factor):
+    c = np.append(0, np.cumsum(x))     
+    bin = np.linspace(1, len(x), len(x))
+    bin = factor*bin
+    X = []
+    for i in range(len(bin)):
+        n = int(bin[i])
+        lower = i-(n//2)
+        if lower < 0:
+            lower = 0
+        upper = i+(n//2)+1
+        if upper > len(x):
+            upper = len(x)
+        mean = (c[upper]-c[lower])/(upper-lower)
+        X.append(mean)
+    return X
 
-    tranformed_arrays = np.array(dl)
-    
-    return (tranformed_arrays, omegas)
-
-def smoothen(l, r, step):
-    '''
-    l is the array to be smoothened
-    r is the range over which mean is calculated
-    step is how far apart are the data taken to be averaged over
-    Returns a tuple of the smoothened (averaged) l and t
+def regression_slope(a, b, factor):
     '''
     
-    ls = np.array([])
+   This function divides a data set into small section
+   then draws a regression line through the small sections.
+   and returns the slopes of the regression line as an array.
+
+   Parameters
+   ----------
+   a : array of a values
+   b : array of b values
+   factor: ratio of bin size to take the slope over
+
+   Returns
+   -------
+   array of regression line slope
+
+   Formulae
+   --------
+
+   Least squares regression for y = a + b*x
+
+   b = Sxy / Sxx
+   a = ybar - b * xbar
+
+   where:
+   Sxy = sum(x*y) - (sum(x) * sum(y)) / n
+   Sxx = sum(x**2) - (sum(x))**2 / n
+   xbar = mean(x), ybar = mean(y), n = number of points
+   
+   '''
     
-    for i in range(0, len(l)-r+1, step):
+    bin = np.linspace(1, len(a), len(a))
+    bin = factor*bin
+    
+    XY = np.append(0, np.cumsum(a*b))
+    XX = np.append(0, np.cumsum(a*a))
+    X = np.append(0, np.cumsum(a))
+    Y = np.append(0, np.cumsum(b))
+    
+    slopes = []
+    for i in range(len(bin)):
         
-        ls_t = np.array([])
-              
-        for j in range(r):
-            ls_t = np.append(ls_t, l[i+j])
-            
-        l_mean = np.mean(ls_t)
-        ls = np.append(ls, l_mean)
+        n = int(bin[i])
+        h = max(1, n//2)          # half the window, at least 1 so there are 2+ points
+        l = i-h
+        if l < 0:
+            l = 0
+        u = i+h+1
+        if u > len(a):
+            u = len(a)
         
-    return ls    
-
-def regression_slope(x, y, r, step):
-    '''
-    
-    This function divides a data set into small section
-    then draws a regression line through the small sections.
-    and returns the slopes of the regression line as an array.
-    
-    Parameters
-    ----------
-    x : array of x values
-    y : array of y values
-    r : integer
-        range to find slope over
-    step : TYPE
-        DESCRIPTION.
-
-    Returns
-    -------
-    array of regression line slope
-    
-    Formulae
-    --------
-    
-    Least squares regression for y = a + b*x
-
-    b = Sxy / Sxx
-    a = ybar - b * xbar
-
-where:
-    Sxy = sum(x*y) - (sum(x) * sum(y)) / n
-    Sxx = sum(x**2) - (sum(x))**2 / n
-    xbar = mean(x), ybar = mean(y), n = number of points
-
-    '''
-    
-    gradients = []
-    modx = []
-    
-    for i in range(0, len(x)-r+1, step):
-        lx = x[i:i+r]
-        ly = y[i:i+r]
-        avgx = np.sum(x[i:i+step])/step
-        # average of x over the interval
-        Sxx = np.sum(lx**2) - (np.sum(lx)**2)/len(lx)
-        Sxy = np.sum(lx*ly) - (np.sum(lx)*np.sum(ly))/len(lx)
-        slope = Sxy/Sxx
-        gradients.append(slope)
-        modx.append(avgx)
+        N = u-l                   # real number of points in the window after clipping
+        xy = XY[u]-XY[l]          # sum of a*b inside the window
+        xx = XX[u]-XX[l]          # sum of a squared inside the window
+        x = X[u]-X[l]             # sum of a inside the window (was a slice before)
+        y = Y[u]-Y[l]             # sum of b inside the window (was a slice before)
         
-    return (np.array(modx), np.array(gradients))
-
-# Keep r and step same for best results.
-
-def fast_fourier(l, time):
-    
-    t = data.mag[time].values
-    t = (t - t[0]) / np.timedelta64(1, 's')
-    dt = (t[-1]-t[0])/len(t)
-    w =np.fft.rfftfreq(len(t), dt)
-    
-    print(dt)
-    fw = 1/(t[-1]-t[0])
-    print(fw)
-    
-    transformed_array = []
-    for axis in l:
-        B = data.mag[axis].values
-        f = np.fft.rfft(B)
-        transformed_array.append(f)
-        print(axis)
+        Sxy = xy - x*y/N
+        Sxx = xx - x**2/N
         
-    transformed_array = np.array(transformed_array)
+        m = Sxy/Sxx
+        slopes.append(m)
     
-    return (transformed_array, w)
+    return np.array(slopes)
+        
+    
+    
