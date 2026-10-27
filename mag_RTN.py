@@ -1,7 +1,9 @@
+import sys
+sys.path.append(r"C:\Users\ual-laptop\Desktop\Plasma Research\Codes") 
 from solarwind import load_timeseries
 import matplotlib.pyplot as mat
 import numpy as np
-
+import functions2 as F
 
 data = load_timeseries(
     mission="psp",
@@ -26,44 +28,8 @@ for coord in [b_r, b_t, b_n]:
     coord_interp = np.interp(t, tg[valid], coord[valid])
     b.append(coord_interp)
 
-
-
-
-def fast_fourier(y, x):
-    
-    dx = (x[-1]-x[0])/(len(x)-1)
-    w = np.fft.rfftfreq(len(x), dx)
-    w = w[1:]
-    
-    B = []
-    for coord in y:
-        b = np.fft.rfft(coord-np.mean(coord), norm="ortho")
-        B.append(np.abs(b[1:]))
-    
-    return (B, w)
-
-def smoothen(x, factor):
-    c = np.append(0, np.cumsum(x))     
-    bin = np.linspace(1, len(x), len(x))
-    bin = factor*bin
-    X = []
-    for i in range(len(bin)):
-        n = int(bin[i])
-        lower = i-(n//2)
-        if lower < 0:
-            lower = 0
-        upper = i+(n//2)+1
-        if upper > len(x):
-            upper = len(x)
-        mean = (c[upper]-c[lower])/(upper-lower)
-        X.append(mean)
-    return X
-
-
-
-
-B, w = fast_fourier(b, t)
-w = smoothen(w,0.1)
+B, w = F.fast_fourier(b, t)
+w = F.smoothen(w,0.5)
 logw = np.log10(w)
 
 b_trace = 0
@@ -79,17 +45,22 @@ dict = {
         "B_trace":B[3]
         }
 
-fig, axs = mat.subplots(len(B), 1, figsize=(8, 10))
+fig, axs = mat.subplots(len(B), 2, figsize=(10, 10))
 
 i=0
 for key, value in dict.items():
     coord = value
     power = dt*(coord)**2
-    power = smoothen(power,0.1)
+    power = F.smoothen(power,0.5)
     logp = np.log10(power)
     
-    axs[i].plot(logw, logp)
-    axs[i].set_xlabel(key)
+    m = F.regression_slope(logw, logp, 1)
+    
+    axs[i,0].plot(logw, logp)
+    axs[i,0].set_ylabel(key)
+    
+    axs[i,1].plot(logw, m)
+    axs[i,1].set_ylabel("{} slope".format(key))
     
     i += 1
     
