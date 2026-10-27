@@ -1,0 +1,100 @@
+import numpy as np
+
+def fast_fourier(y, x):
+    
+    dx = (x[-1]-x[0])/(len(x)-1)
+    w = np.fft.rfftfreq(len(x), dx)
+    w = w[1:]
+    
+    B = []
+    for coord in y:
+        b = np.fft.rfft(coord-np.mean(coord), norm="ortho")
+        B.append(np.abs(b[1:]))
+    
+    return (B, w)
+
+def smoothen(x, factor):
+    c = np.append(0, np.cumsum(x))     
+    bin = np.linspace(1, len(x), len(x))
+    bin = factor*bin
+    X = []
+    for i in range(len(bin)):
+        n = int(bin[i])
+        lower = i-(n//2)
+        if lower < 0:
+            lower = 0
+        upper = i+(n//2)+1
+        if upper > len(x):
+            upper = len(x)
+        mean = (c[upper]-c[lower])/(upper-lower)
+        X.append(mean)
+    return X
+
+def regression_slope(a, b, factor):
+    '''
+    
+   This function divides a data set into small section
+   then draws a regression line through the small sections.
+   and returns the slopes of the regression line as an array.
+
+   Parameters
+   ----------
+   a : array of a values
+   b : array of b values
+   factor: ratio of bin size to take the slope over
+
+   Returns
+   -------
+   array of regression line slope
+
+   Formulae
+   --------
+
+   Least squares regression for y = a + b*x
+
+   b = Sxy / Sxx
+   a = ybar - b * xbar
+
+   where:
+   Sxy = sum(x*y) - (sum(x) * sum(y)) / n
+   Sxx = sum(x**2) - (sum(x))**2 / n
+   xbar = mean(x), ybar = mean(y), n = number of points
+   
+   '''
+    
+    bin = np.linspace(1, len(a), len(a))
+    bin = factor*bin
+    
+    XY = np.append(0, np.cumsum(a*b))
+    XX = np.append(0, np.cumsum(a*a))
+    X = np.append(0, np.cumsum(a))
+    Y = np.append(0, np.cumsum(b))
+    
+    slopes = []
+    for i in range(len(bin)):
+        
+        n = int(bin[i])
+        h = max(1, n//2)          # half the window, at least 1 so there are 2+ points
+        l = i-h
+        if l < 0:
+            l = 0
+        u = i+h+1
+        if u > len(a):
+            u = len(a)
+        
+        N = u-l                   # real number of points in the window after clipping
+        xy = XY[u]-XY[l]          # sum of a*b inside the window
+        xx = XX[u]-XX[l]          # sum of a squared inside the window
+        x = X[u]-X[l]             # sum of a inside the window (was a slice before)
+        y = Y[u]-Y[l]             # sum of b inside the window (was a slice before)
+        
+        Sxy = xy - x*y/N
+        Sxx = xx - x**2/N
+        
+        m = Sxy/Sxx
+        slopes.append(m)
+    
+    return np.array(slopes)
+        
+    
+    
