@@ -49,15 +49,16 @@ def smoothen(x, factor):
     X = []
     for i in range(len(bin)):
         n = int(bin[i])
-        m = i-(n//2)
-        if m < 0:
-            m = 0
-        e = i+(n//2)+1
-        if e > len(x):
-            e = len(x)
-        mean = (c[e]-c[m])/(e-m)
+        lower = i-(n//2)
+        if lower < 0:
+            lower = 0
+        upper = i+(n//2)+1
+        if upper > len(x):
+            upper = len(x)
+        mean = (c[upper]-c[lower])/(upper-lower)
         X.append(mean)
     return X
+
 
 
 
@@ -76,7 +77,7 @@ fig, axs = mat.subplots(len(B), 1, figsize=(8, 10))
 for i in range(len(B)):
     coord = B[i]
     power = dt*(coord)**2
-    power = smoothen(power,2)
+    power = smoothen(power,0.1)
     logp = np.log10(power)
     
     axs[i].plot(logw, logp)
