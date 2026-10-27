@@ -3,7 +3,7 @@ sys.path.append(r"C:\Users\ual-laptop\Desktop\Plasma Research\Codes")
 from solarwind import load_timeseries
 import matplotlib.pyplot as mat
 import numpy as np
-import functions2 as F
+import functions3 as F
 
 data = load_timeseries(
     mission="psp",
