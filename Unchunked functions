@@ -59,7 +59,7 @@ def regression_slope(a, b, factor):
    Sxy = sum(x*y) - (sum(x) * sum(y)) / n
    Sxx = sum(x**2) - (sum(x))**2 / n
    xbar = mean(x), ybar = mean(y), n = number of points
-   
+
    '''
     
     bin = np.linspace(1, len(a), len(a))
@@ -95,6 +95,3 @@ def regression_slope(a, b, factor):
         slopes.append(m)
     
     return np.array(slopes)
-        
-    
-    
