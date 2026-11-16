@@ -1,0 +1,179 @@
+# E12
+
+import sys
+sys.path.append(r"C:\Users\ual-laptop\Desktop\Plasma Research\Codes") 
+from solarwind import load_timeseries
+import matplotlib.pyplot as mat
+import numpy as np
+import functions3 as F
+import astropy.units as ap
+import sunpy.coordinates as sp
+from astropy.time import Time
+
+t = Time('2022-06-01T00:00:00')
+
+r_psp = sp.get_horizons_coord('Parker Solar Probe', t)
+r_solo = sp.get_horizons_coord('Solar Orbiter', t)
+
+r_psp = r_psp.radius.to(ap.au)
+r_solo = r_solo.radius.to(ap.au)
+
+# This converts the coordinates into distance
+
+print('r_psp:', r_psp)
+print('r_solo:', r_solo)
+
+t_inj_psp = F.injection_time(r_psp.value)
+
+print('psp injection time: ', t_inj_psp)
+
+t_start_psp = t.iso
+t_end_psp = (t + t_inj_psp * ap.s).iso
+
+print('psp start: ', t_start_psp)
+print('psp end: ', t_end_psp)
+
+t_inj_solo = F.injection_time(r_solo.value)
+
+print('solo injection time: ', t_inj_solo)
+
+t_start_solo = t.iso
+t_end_solo = (t + t_inj_solo * ap.s).iso
+
+print('solo start: ', t_start_solo)
+print('solo end: ', t_end_solo)
+
+data_psp = load_timeseries(
+    mission="psp",
+    start=t_start_psp,
+    stop=t_end_psp,
+)
+
+data_solo = load_timeseries(
+    mission="SolO",
+    start=t_start_solo,
+    stop=t_end_solo,
+)
+
+# ---------------- PSP ----------------
+
+tg_psp = data_psp.mag['time'].values
+tg_psp = (tg_psp - tg_psp[0]) / np.timedelta64(1, 's')  # The g stands for gaps in data
+t_psp = np.linspace(tg_psp[0], tg_psp[-1], len(tg_psp))
+dt_psp = (t_psp[-1]-t_psp[0])/(len(t_psp)-1)
+
+b_r_psp = data_psp.mag["B_R"].values        # radial component of magnetic field
+b_t_psp = data_psp.mag["B_T"].values        # tangential component
+b_n_psp = data_psp.mag["B_N"].values        # normal component
+b_mag_psp = data_psp.mag["B_mag"].values    # total field strength (magnitude)
+
+b_psp = []
+for coord in [b_r_psp, b_t_psp, b_n_psp]:
+    # Drop NaNs from both tg and coord
+    valid = ~np.isnan(tg_psp) & ~np.isnan(coord)  # ~ means not, this give a boolean array
+    coord_interp = np.interp(t_psp, tg_psp[valid], coord[valid])
+    b_psp.append(coord_interp)
+
+B_psp, w_psp = F.fast_fourier(b_psp, t_psp)
+logw_psp = np.log10(w_psp)
+
+b_trace_psp = 0
+for coord in B_psp:
+    b_trace_psp += coord**2
+b_trace_psp = np.sqrt(b_trace_psp)
+B_psp.append(b_trace_psp)
+
+dict_psp = {
+        # "B_R":B_psp[0],
+        # "B_T":B_psp[1],
+        # "B_N":B_psp[2],
+        "B_trace":B_psp[3]
+        }
+
+
+# ---------------- SolO ----------------
+
+tg_solo = data_solo.mag['time'].values
+tg_solo = (tg_solo - tg_solo[0]) / np.timedelta64(1, 's')  # The g stands for gaps in data
+t_solo = np.linspace(tg_solo[0], tg_solo[-1], len(tg_solo))
+dt_solo = (t_solo[-1]-t_solo[0])/(len(t_solo)-1)
+
+b_r_solo = data_solo.mag["B_R"].values        # radial component of magnetic field
+b_t_solo = data_solo.mag["B_T"].values        # tangential component
+b_n_solo = data_solo.mag["B_N"].values        # normal component
+b_mag_solo = data_solo.mag["B_mag"].values    # total field strength (magnitude)
+
+b_solo = []
+for coord in [b_r_solo, b_t_solo, b_n_solo]:
+    # Drop NaNs from both tg and coord
+    valid = ~np.isnan(tg_solo) & ~np.isnan(coord)  # ~ means not, this give a boolean array
+    coord_interp = np.interp(t_solo, tg_solo[valid], coord[valid])
+    b_solo.append(coord_interp)
+
+B_solo, w_solo = F.fast_fourier(b_solo, t_solo)
+logw_solo = np.log10(w_solo)
+
+b_trace_solo = 0
+for coord in B_solo:
+    b_trace_solo += coord**2
+b_trace_solo = np.sqrt(b_trace_solo)
+B_solo.append(b_trace_solo)
+
+dict_solo = {
+        # "B_R":B_solo[0],
+        # "B_T":B_solo[1],
+        # "B_N":B_solo[2],
+        "B_trace":B_solo[3]
+        }
+
+
+# ---------------- Plots ----------------
+
+fig, axs = mat.subplots(len(dict_psp), 2, figsize=(10, 4), squeeze=False )
+
+# PSP and SolO overlaid on the same axes
+# figsize = (8,12) for all plots
+# figsize = (10,4) for just trace
+
+i=0
+for key in dict_psp:
+    print(f"Plotting {key}")
+    
+    # PSP
+    power_psp = 2*dt_psp*(dict_psp[key])**2
+    power_psp = F.smoothen(w_psp, power_psp)
+    logp_psp = np.log10(power_psp)
+    m_psp = F.regression_slope(logw_psp, logp_psp)
+    
+    # SolO
+    power_solo = 2*dt_solo*(dict_solo[key])**2
+    power_solo = F.smoothen(w_solo, power_solo)
+    logp_solo = np.log10(power_solo)
+    m_solo = F.regression_slope(logw_solo, logp_solo)
+    
+    axs[i, 0].plot(logw_psp, logp_psp, label='PSP', color='green')
+    axs[i, 0].plot(logw_solo, logp_solo, label='SolO', color='orange')
+    axs[i, 0].set_xlabel('log(f)')
+    axs[i, 0].set_ylabel(f'log(power) [{key}]')
+    axs[i, 0].set_title(f'{key} power spectrum')
+    axs[i, 0].legend()
+
+    axs[i, 1].plot(logw_psp, m_psp, label='PSP', color='green')
+    axs[i, 1].plot(logw_solo, m_solo, label='SolO', color='orange')
+    axs[i, 1].set_xlabel('log(f)')
+    axs[i, 1].set_ylabel('spectral index (slope)')
+    axs[i, 1].set_title(f'{key} slope')
+    axs[i, 1].legend()
+    
+    '''
+    axs[i, 0].set_xlim(-4, 1)
+    axs[i, 0].set_ylim(-6, 6) 
+    axs[i, 1].set_xlim(-4, 1)
+    axs[i, 1].set_ylim(-4, 0)
+    '''
+    
+    i += 1
+    
+fig.tight_layout()
+fig.savefig('E12 PSD.pdf', bbox_inches='tight')
+mat.show()
